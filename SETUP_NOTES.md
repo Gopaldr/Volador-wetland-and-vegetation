@@ -12,18 +12,18 @@ The frontend application is located inside the frontend directory.
 ## 3. Install Dependencies
 Open PowerShell in the frontend directory and run:
 
-```powershell
+
 npm.cmd install
-```
+
 
 Run this command only when dependencies need to be installed or restored.
 
 ## 4. Start Development Server
 Run:
 
-```powershell
+
 npm.cmd run dev
-```
+
 
 Open the local URL displayed by Vite.
 
@@ -34,18 +34,18 @@ http://localhost:5173
 ## 5. Run Focused QA Tests
 Run:
 
-```powershell
+
 npm.cmd test -- src/features/validation/__tests__/ValidationPage.test.tsx
-```
+
 
 Expected result: 5 tests passed.
 
 ## 6. Run Complete Frontend Tests
 Run:
 
-```powershell
+
 npm.cmd test
-```
+
 
 Verified result:
 - 2 test files passed.
@@ -54,9 +54,9 @@ Verified result:
 ## 7. Production Build
 Run:
 
-```powershell
+
 npm.cmd run build
-```
+
 
 Verified result:
 - TypeScript compilation passed.
@@ -69,9 +69,9 @@ Note: Vite reported a non-blocking warning because the JavaScript bundle exceeds
 ## 8. QA Findings Data
 The Validation page reads structured findings from the backend response at:
 
-```text
+
 results.validation.flags
-```
+
 
 Supported fields:
 - code
