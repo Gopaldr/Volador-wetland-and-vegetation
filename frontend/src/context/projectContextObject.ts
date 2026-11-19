@@ -17,6 +17,13 @@ import type { ManualExclusion } from "./ProjectContext";
 
 export interface ProjectContextType {
   project: Project | null;
+  projects: Project[];
+  createNewProject: (
+    name: string,
+    description: string,
+    aoiName: string
+  ) => Promise<void>;
+  switchProject: (projectId: string) => Promise<void>;
   validation: ValidationResult | null;
   runStatus: RunStatus | null;
   results: AnalysisResults | null;

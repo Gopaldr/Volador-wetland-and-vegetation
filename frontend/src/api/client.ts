@@ -159,7 +159,7 @@ export interface TransitionMatrixMetrics {
   [key: string]: number[][] | number | string | boolean | null | undefined;
 }
 
-/** QA flags within the validation block. */
+/** Summary QA flags within the validation block. */
 export interface QaFlags {
   alignment?: string;
   temporal?: string;
@@ -308,13 +308,25 @@ export async function fetchHealth(): Promise<boolean> {
   }
 }
 
-export async function createProject(name: string, description?: string): Promise<Project> {
+export async function createProject(
+  name: string,
+  description?: string,
+  aoiName?: string
+): Promise<Project> {
   const res = await fetch(`${API_BASE}/projects`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, description, aoi_name: "Central Reserve" }),
+    body: JSON.stringify({
+      name,
+      description,
+      aoi_name: aoiName,
+    }),
   });
-  if (!res.ok) await handleResponseError(res, "Failed to create project");
+
+  if (!res.ok) {
+    await handleResponseError(res, "Failed to create project");
+  }
+
   return res.json();
 }
 

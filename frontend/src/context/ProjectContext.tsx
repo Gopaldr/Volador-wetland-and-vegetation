@@ -38,6 +38,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const [project, setProject] = useState<Project | null>(null);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [validation, setValidation] = useState<ValidationResult | null>(null);
   const [runStatus, setRunStatus] = useState<RunStatus | null>(null);
   const [results, setResults] = useState<AnalysisResults | null>(null);
@@ -78,20 +79,30 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({
         setLoading(true);
         setError(null);
 
-        const existing = await getProjects();
+       const existing = await getProjects();
 
-        let currentProj: Project;
+let currentProj: Project;
 
-        if (existing.length > 0) {
-          currentProj = existing[0];
-        } else {
-          currentProj = await createProject(
-            "Wetland Degradation Study",
-            "Sentinel-2 5-channel temporal degradation analysis"
-          );
-        }
+if (existing.length > 0) {
+  currentProj = existing[0];
+  setProjects(existing);
+} else {
+  currentProj = await createProject(
+    "Wetland Degradation Study",
+    "Sentinel-2 5-channel temporal degradation analysis",
+    "Central Reserve"
+  );
 
-        setProject(currentProj);
+  setProjects([currentProj]);
+}
+
+setProject(currentProj);
+   try {
+  const preparationState = await getPreparation(currentProj.id);
+  setPreparation(preparationState);
+} catch (err) {
+  console.warn("Could not restore project preparation:", err);
+}
 
         // Restore an existing run only if it still exists.
         if (currentProj.latest_run_id) {
@@ -325,6 +336,139 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, [project]);
   // ------------------------------------------------------------
+  // Switch between existing projects
+  // ------------------------------------------------------------
+
+  const switchProject = async (projectId: string) => {
+    const selectedProject = projects.find(
+      (item) => item.id === projectId
+    );
+
+    if (!selectedProject) {
+      setError("Selected project could not be found.");
+      return;
+    }
+
+    if (project?.id === projectId) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Clear the previous project's frontend state.
+      setValidation(null);
+      setRunStatus(null);
+      setResults(null);
+      setLayers([]);
+      setManualExclusions([]);
+      setPreparation(null);
+      setActiveLayerId("t2_health");
+
+      // Activate the selected project.
+      setProject(selectedProject);
+
+      // Restore this project's saved preparation.
+      try {
+        const preparationState = await getPreparation(
+          selectedProject.id
+        );
+        setPreparation(preparationState);
+      } catch (err) {
+        console.warn(
+          "Could not restore project preparation:",
+          err
+        );
+      }
+
+      // Restore its latest run, if one exists.
+      if (selectedProject.latest_run_id) {
+        try {
+          const existingRun = await getRunStatus(
+            selectedProject.latest_run_id
+          );
+
+          setRunStatus(existingRun);
+
+          if (existingRun.status === "COMPLETED") {
+            await loadRunData(existingRun.run_id);
+          }
+        } catch (err) {
+          console.warn(
+            "Could not restore the project's latest run:",
+            err
+          );
+        }
+      }
+    } catch (err: unknown) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to switch project."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+  // ------------------------------------------------------------
+  // Create a new project
+  // ------------------------------------------------------------
+
+  const createNewProject = async (
+    name: string,
+    description: string,
+    aoiName: string
+  ) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const newProject = await createProject(
+        name.trim(),
+        description.trim(),
+        aoiName.trim()
+      );
+
+      // Add the new project to the available project list.
+      setProjects((current) => [...current, newProject]);
+
+      // Clear previous project data from the frontend.
+      setValidation(null);
+      setRunStatus(null);
+      setResults(null);
+      setLayers([]);
+      setManualExclusions([]);
+      setPreparation(null);
+      setActiveLayerId("t2_health");
+
+      // Activate the newly created project.
+      setProject(newProject);
+
+      // Load its initial preparation state.
+      try {
+        const preparationState = await getPreparation(
+          newProject.id
+        );
+        setPreparation(preparationState);
+      } catch (err) {
+        console.warn(
+          "Could not load new project preparation:",
+          err
+        );
+      }
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Failed to create project.";
+
+      setError(message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ------------------------------------------------------------
   // Clear all analysis data and reset the current project session
   // ------------------------------------------------------------
 
@@ -411,6 +555,9 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({
     <ProjectContext.Provider
       value={{
         project,
+        projects,
+        createNewProject,
+        switchProject,
         validation,
         runStatus,
         results,
