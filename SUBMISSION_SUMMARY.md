@@ -1,4 +1,4 @@
-﻿TASK: First Working Iteration - Implementation and Verification
+TASK: First Working Iteration - Implementation and Verification
 
 PROJECT: Volador Wetland and Vegetation
 BRANCH: feature/actionable-qa-findings
@@ -42,9 +42,9 @@ Project Management:
 - frontend/src/context/projectContextObject.ts
 
 Documentation:
-- IMPLEMENTATION_PLAN.txt
-- SETUP_NOTES.txt
-- SUBMISSION_SUMMARY.txt
+- IMPLEMENTATION_PLAN.md
+- SETUP_NOTES.md
+- SUBMISSION_SUMMARY.md
 
 4. TESTING AND VERIFICATION
 
@@ -93,4 +93,3 @@ The first working iteration has been implemented, tested, demonstrated, and comm
 Project management and actionable QA findings are working in the prototype.
 
 Implementation status: COMPLETED.
-

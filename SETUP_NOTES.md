@@ -1,79 +1,136 @@
-# Setup Notes: Actionable QA Findings
+SETUP AND IMPLEMENTATION NOTES
 
-## 1. Prerequisites
-- Node.js installed.
-- npm installed.
-- Project repository cloned locally.
-- Frontend dependencies installed.
+Project: Volador Wetland and Vegetation
+Branch: feature/actionable-qa-findings
 
-## 2. Frontend Location
-The frontend application is located inside the frontend directory.
+STATUS: FIRST WORKING ITERATION COMPLETED
 
-## 3. Install Dependencies
-Open PowerShell in the frontend directory and run:
+1. PROJECT STRUCTURE
 
+Repository:
+Volador-wetland-and-vegetation
 
-npm.cmd install
+Frontend:
+frontend/
 
+Backend:
+backend/
 
-Run this command only when dependencies need to be installed or restored.
+Python virtual environment:
+.venv/
 
-## 4. Start Development Server
-Run:
+Git branch:
+feature/actionable-qa-findings
 
+2. PREREQUISITES
+
+- Node.js
+- npm
+- Python
+- Git
+- Visual Studio Code or another code editor
+
+Windows PowerShell users should use npm.cmd for npm commands.
+
+3. STARTING THE BACKEND
+
+Open a PowerShell terminal in the repository root.
+
+Navigate to the backend directory:
+
+cd backend
+
+Start the backend using the existing root virtual environment:
+
+..\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+
+Backend URL:
+
+http://127.0.0.1:8000
+
+API documentation:
+
+http://127.0.0.1:8000/docs
+
+Keep the backend terminal running.
+
+4. STARTING THE FRONTEND
+
+Open a separate PowerShell terminal in the repository root.
+
+Navigate to the frontend:
+
+cd frontend
+
+Start the development server:
 
 npm.cmd run dev
 
-
-Open the local URL displayed by Vite.
-
-The usual development URL is:
+Frontend URL:
 
 http://localhost:5173
 
-## 5. Run Focused QA Tests
-Run:
+Keep the frontend terminal running.
 
+If dependencies are not installed, run:
 
-npm.cmd test -- src/features/validation/__tests__/ValidationPage.test.tsx
+npm.cmd install
 
+5. IMPLEMENTED FEATURES
 
-Expected result: 5 tests passed.
+A. Actionable QA Findings
 
-## 6. Run Complete Frontend Tests
-Run:
+Validation page:
+frontend/src/features/validation/ValidationPage.tsx
 
+API response types:
+frontend/src/api/client.ts
 
-npm.cmd test
+Automated tests:
+frontend/src/features/validation/__tests__/ValidationPage.test.tsx
 
+The Validation page displays:
+- Finding code
+- Severity
+- Status
+- Processing phase
+- Message
+- Recommended action
 
-Verified result:
-- 2 test files passed.
-- 13 tests passed.
+The implementation includes fallback handling and empty states.
 
-## 7. Production Build
-Run:
+B. Project Management
 
+Project selector and New Project modal:
+frontend/src/components/layout/TopBar.tsx
 
-npm.cmd run build
+Project context:
+frontend/src/context/ProjectContext.tsx
 
+Project context types:
+frontend/src/context/projectContextObject.ts
 
-Verified result:
-- TypeScript compilation passed.
-- 241 modules transformed.
-- Production build completed successfully.
-- Build output generated in frontend/dist.
+API functions:
+frontend/src/api/client.ts
 
-Note: Vite reported a non-blocking warning because the JavaScript bundle exceeds 500 kB after minification. The production build completed successfully.
+Implemented functionality:
+- View and select available projects.
+- Switch between projects.
+- Create a new project.
+- Enter project name, description, and AOI.
+- Save the project through the backend API.
+- Update active project state.
 
-## 8. QA Findings Data
-The Validation page reads structured findings from the backend response at:
+Project creation and saving were manually verified.
 
+6. QA FINDINGS RESPONSE STRUCTURE
+
+The frontend reads structured QA findings from:
 
 results.validation.flags
 
+Supported finding fields:
 
-Supported fields:
 - code
 - severity
 - status
@@ -81,17 +138,98 @@ Supported fields:
 - message
 - recommended_action
 
-Missing optional values are handled using fallback labels.
+Optional or incomplete information is handled through frontend fallbacks.
 
-## 9. Relevant Files
-- src/api/client.ts
-- src/features/validation/ValidationPage.tsx
-- src/features/validation/__tests__/ValidationPage.test.tsx
+7. RUNNING TESTS
 
-## 10. Verification Status
-- Focused QA tests: PASS.
-- Full frontend tests: PASS.
-- Production build: PASS.
+Run focused Validation page tests from the frontend directory:
 
-## 11. Preservation Note
-These setup notes describe the frontend Actionable QA Findings improvement. Preserve unrelated local project changes and backend storage data when preparing Git commits.
+npm.cmd test -- src/features/validation/__tests__/ValidationPage.test.tsx
+
+Run the complete frontend test suite:
+
+npm.cmd test
+
+Verified result:
+
+2 test files passed.
+13 tests passed.
+
+Note:
+Project management currently does not have dedicated automated tests.
+
+8. PRODUCTION BUILD
+
+From the frontend directory:
+
+npm.cmd run build
+
+The build performs TypeScript compilation and Vite production bundling.
+
+Verified:
+- TypeScript compilation successful.
+- Vite production build successful.
+
+A non-blocking warning was reported about a JavaScript bundle larger than 500 kB.
+
+9. MANUAL VERIFICATION
+
+Verified during implementation:
+
+- Backend started successfully.
+- Backend port 8000 connectivity succeeded.
+- Frontend started successfully.
+- Project dropdown displayed.
+- Project switching worked.
+- New Project modal displayed.
+- New project creation succeeded.
+- Created project was saved.
+- Actionable QA findings displayed on the Validation page.
+
+10. GIT INFORMATION
+
+Branch:
+
+feature/actionable-qa-findings
+
+Latest project management commit:
+
+a21540d
+
+Commit message:
+
+Implement project management and project switching
+
+Unrelated local backend storage changes, recovered project data, Python cache files, and other local files were intentionally excluded from the feature commit.
+
+IMPORTANT:
+Do not use git add . in this repository while unrelated local changes remain.
+
+Review files individually before staging or committing additional changes.
+
+11. KNOWN WARNINGS
+
+- Project management automated test coverage is not yet added.
+- Vite reports a large JavaScript bundle warning.
+- FastAPI reports deprecation warnings related to Form example parameters.
+
+These warnings did not prevent the application from starting or the frontend production build from succeeding.
+
+12. IMPLEMENTATION DOCUMENTATION
+
+IMPLEMENTATION_PLAN.md:
+Describes the implementation objectives, features, acceptance criteria, verification results, limitations, and future improvements.
+
+SUBMISSION_SUMMARY.md:
+Summarizes completed implementation, tests, manual verification, Git commit, and known limitations.
+
+SETUP_NOTES.md:
+Provides setup, startup, testing, build, and Git safety instructions.
+
+CONCLUSION
+
+The first working iteration has been implemented, tested, demonstrated, and committed.
+
+Actionable QA Findings and Project Management functionality are available in the prototype.
+
+Implementation status: COMPLETED.
