@@ -93,3 +93,25 @@ def test_qa_engine_cva_math():
     assert len(engine.flags) == 1
     assert engine.flags[0]["code"] == "QA-020"
     assert engine.flags[0]["severity"] == "CRITICAL"
+
+
+def test_qa_reproducibility_category_is_initialized():
+    """QA-017 should update the reproducibility category consistently."""
+    config = {}
+    engine = QualityAssuranceEngine(config)
+
+    engine.add_flag(
+        code="QA-017",
+        severity="CRITICAL",
+        message="Reproducibility check failed.",
+        phase="Reproducibility",
+        status="FAIL",
+        recommended_action="Review the generated outputs.",
+    )
+
+    report = engine.generate_qa_report()
+
+    assert "reproducibility" in report["categories"]
+    assert report["categories"]["reproducibility"] == "FAIL"
+    assert report["overall_status"] == "FAIL"
+    assert report["flags"][0]["code"] == "QA-017"

@@ -125,6 +125,27 @@ def _write_json(path: Path, data: Any) -> None:
         json.dump(data, f, indent=4, ensure_ascii=False, default=str)
 
 
+def _qa_error_report(exc: Exception) -> Dict[str, Any]:
+    """Creates a structured QA report when QA execution fails."""
+    return {
+        "overall_status": "ERROR",
+        "categories": {},
+        "flags": [
+            {
+                "code": "QA-ERROR",
+                "severity": "ERROR",
+                "message": f"QA execution failed: {exc}",
+                "phase": "Quality Assurance",
+                "status": "ERROR",
+                "recommended_action": (
+                    "Review the pipeline logs, investigate the QA error, "
+                    "and rerun the analysis."
+                ),
+            }
+        ],
+    }
+
+
 def _output_entry(run_dir: Path, rel_path: str) -> Dict[str, Any]:
     """Creates a manifest entry for an output file."""
     full = run_dir / rel_path
@@ -237,7 +258,11 @@ class ProductionPipeline:
             hydro_metrics: Dict[str, Any] = {}
             fusion_metrics: Dict[str, Any] = {}
             metrics_result_dict: Dict[str, Any] = {}
-            qa_dict: Dict[str, Any] = {"overall_status": "PASS", "flags": []}
+            qa_dict: Dict[str, Any] = {
+                "overall_status": "NOT_REPORTED",
+                "categories": {},
+                "flags": [],
+            }
 
             # ==============================================================
             # STEP 1 — Load & validate configuration
@@ -504,7 +529,10 @@ class ProductionPipeline:
                     _write_json(val_dir / "qa_report.json", qa_dict)
                     outputs["validation/qa_report.json"] = "validation/qa_report.json"
                 except Exception as exc:
+                    qa_dict = _qa_error_report(exc)
                     warnings.append(f"QA: {exc}")
+                    _write_json(val_dir / "qa_report.json", qa_dict)
+                    outputs["validation/qa_report.json"] = "validation/qa_report.json"
                     run_logger.warning("Step 12 — QA issue: %s", exc)
 
                 total_runtime = time.perf_counter() - run_start
@@ -1352,7 +1380,10 @@ class ProductionPipeline:
                     _write_json(val_dir / "qa_report.json", qa_dict)
                     outputs["validation/qa_report.json"] = "validation/qa_report.json"
                 except Exception as exc:
+                    qa_dict = _qa_error_report(exc)
                     warnings.append(f"QA: {exc}")
+                    _write_json(val_dir / "qa_report.json", qa_dict)
+                    outputs["validation/qa_report.json"] = "validation/qa_report.json"
                     run_logger.warning("Step 12 — QA issue: %s", exc)
 
                 run_logger.info("Step 12 — QA: %s", qa_dict.get("overall_status", "UNKNOWN"))

@@ -1,6 +1,5 @@
 import os
 import numpy as np
-import rasterio
 from pathlib import Path
 from scipy.ndimage import label
 from typing import Dict, Any, List, Optional, Tuple
@@ -18,7 +17,8 @@ class QualityAssuranceEngine:
             "change": "PASS",
             "wetland": "PASS",
             "metrics": "PASS",
-            "uncertainty": "PASS"
+            "uncertainty": "PASS",
+            "reproducibility": "PASS",
         }
         
     def add_flag(self, code: str, severity: str, message: str, phase: str, status: str, recommended_action: str):
