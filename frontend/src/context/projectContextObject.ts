@@ -46,10 +46,10 @@ export interface ProjectContextType {
     file: File,
     mode?: "vegetation" | "wetland"
   ) => Promise<void>;
-  triggerRun: (config?: Record<string, any>) => Promise<void>;
+  triggerRun: (config?: Record<string, unknown>) => Promise<void>;
   refreshResults: () => Promise<void>;
   fetchPreparation: (projectId?: string) => Promise<PreparationState | undefined>;
-  saveDraft: (inclusion: Record<string, any> | null, exclusions: ManualExclusion[]) => Promise<void>;
+  saveDraft: (inclusion: Record<string, unknown> | null, exclusions: ManualExclusion[]) => Promise<void>;
   commitArea: () => Promise<void>;
   unlockArea: () => Promise<void>;
 }

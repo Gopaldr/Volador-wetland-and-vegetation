@@ -284,3 +284,154 @@ describe("ValidationPage - Actionable QA Findings", () => {
     ).toBeInTheDocument();
   });
 });
+
+
+describe("ValidationPage - Structured Engine QA", () => {
+  const structuredResults = {
+    validation: {
+      overall_status: "WARN",
+      categories: {
+        input: "PASS",
+        model: "WARN",
+        uncertainty: "NOT_AVAILABLE",
+      },
+      required_checks: [
+        "input",
+        "model",
+        "uncertainty",
+        "reproducibility",
+      ],
+      checks: {
+        input: "PASS",
+        model: "WARN",
+        uncertainty: "NOT_AVAILABLE",
+        reproducibility: "NOT_RUN",
+      },
+      flags: [
+        {
+          code: "QA-101",
+          severity: "INFO",
+          status: "NOT_AVAILABLE",
+          category: "uncertainty",
+          check: "uncertainty",
+          message: "Independent evidence unavailable.",
+          recommended_action: "Provide independent samples.",
+        },
+        {
+          code: "QA-102",
+          severity: "MEDIUM",
+          status: "WARN",
+          category: "model",
+          check: "class_distribution",
+          message: "Class distribution needs review.",
+        },
+      ],
+    },
+    warnings: [],
+  };
+
+  beforeEach(() => {
+    mockUseProject.mockReset();
+
+    mockUseProject.mockReturnValue({
+      results: structuredResults,
+      validation: { valid: true },
+    });
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("renders actual engine-reported validation checks", () => {
+    render(<ValidationPage />);
+
+    expect(
+      screen.getByText("4 engine-reported checks"),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText("Input Band Validation"),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText("Reproducibility and Provenance"),
+    ).toBeInTheDocument();
+  });
+
+  it("renders the actual validation categories", () => {
+    render(<ValidationPage />);
+
+    expect(
+      screen.getByText("Validation Categories"),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText("3 engine-reported categories"),
+    ).toBeInTheDocument();
+  });
+
+  it("filters unavailable findings without hiding warnings by default", () => {
+    render(<ValidationPage />);
+
+    expect(screen.getByText("2 of 2 Findings")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Status"), {
+      target: { value: "NOT_AVAILABLE" },
+    });
+
+    expect(screen.getByText("QA-101")).toBeInTheDocument();
+    expect(screen.queryByText("QA-102")).not.toBeInTheDocument();
+    expect(screen.getByText("1 of 2 Findings")).toBeInTheDocument();
+  });
+
+  it("searches findings using structured category identifiers", () => {
+    render(<ValidationPage />);
+
+    fireEvent.change(screen.getByLabelText("Search Findings"), {
+      target: { value: "uncertainty" },
+    });
+
+    expect(screen.getByText("QA-101")).toBeInTheDocument();
+    expect(screen.queryByText("QA-102")).not.toBeInTheDocument();
+  });
+
+  it("does not fabricate PASS for a missing required check", () => {
+    mockUseProject.mockReturnValue({
+      results: {
+        validation: {
+          overall_status: "WARN",
+          required_checks: ["input", "spatial"],
+          checks: { input: "PASS" },
+          flags: [],
+        },
+        warnings: [],
+      },
+      validation: { valid: true },
+    });
+
+    render(<ValidationPage />);
+
+    const spatialRow = screen.getByText(
+      "Spatial Grid Alignment",
+    ).parentElement;
+
+    expect(spatialRow).toHaveTextContent("NOT_REPORTED");
+    expect(spatialRow).not.toHaveTextContent("PASS");
+  });
+
+  it("does not convert dataset readiness into scientific validation", () => {
+    mockUseProject.mockReturnValue({
+      results: null,
+      validation: { valid: true },
+    });
+
+    render(<ValidationPage />);
+
+    expect(screen.queryByText("PASS")).not.toBeInTheDocument();
+
+    expect(
+      screen.getByText(/Dataset readiness: READY/),
+    ).toBeInTheDocument();
+  });
+});

@@ -1,12 +1,63 @@
 import { useMemo, useState } from "react";
 import { useProject } from "../../context/useProject";
 
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function normalizeStatus(
+  value: unknown,
+  fallback = "NOT_REPORTED"
+): string {
+  if (typeof value !== "string" || !value.trim()) {
+    return fallback;
+  }
+
+  return value.trim().toUpperCase();
+}
+
+function readStatus(value: unknown): string {
+  if (typeof value === "string") {
+    return normalizeStatus(value);
+  }
+
+  return normalizeStatus(asRecord(value).status);
+}
+
+function formatLabel(value: string): string {
+  return value
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+const CHECK_LABELS: Record<string, string> = {
+  input: "Input Band Validation",
+  vegetation_index: "Vegetation Index Validation",
+  model: "Model Execution Validation",
+  class_distribution: "Class Distribution Validation",
+  spatial: "Spatial Grid Alignment",
+  nodata: "NoData Propagation",
+  temporal: "Temporal Comparability",
+  transition: "Transition Matrix Validation",
+  change_patch: "Change Patch Validation",
+  cva: "Change Vector Analysis",
+  wetland: "Wetland Evidence Validation",
+  metrics: "Area and Degradation Metrics",
+  uncertainty: "Scientific Uncertainty",
+  reproducibility: "Reproducibility and Provenance",
+};
+
 export default function ValidationPage() {
   const { results, validation: dsValidation } = useProject();
 
   const qa = results?.validation ?? {};
-  const overallStatus =
-    qa.overall_status || qa.status || (results ? "NOT_REPORTED" : "PENDING");
+  const overallStatus = normalizeStatus(
+    qa.overall_status || qa.status,
+    results ? "NOT_REPORTED" : "PENDING"
+  );
 
   // Keep findings stable between renders to avoid unnecessary useMemo recalculation.
   const rawFindings = results?.validation?.flags;
@@ -29,14 +80,16 @@ export default function ValidationPage() {
     const query = searchQuery.trim().toLowerCase();
 
     return findings.filter((finding) => {
-      const severity = (finding.severity || "UNSPECIFIED").toUpperCase();
-      const status = (finding.status || "NOT_REPORTED").toUpperCase();
+      const severity = normalizeStatus(finding.severity, "UNSPECIFIED");
+      const status = normalizeStatus(finding.status);
 
       const searchableText = [
         finding.code,
         finding.message,
         finding.phase,
         finding.recommended_action,
+        asRecord(finding).category,
+        asRecord(finding).check,
         severity,
         status,
       ]
@@ -62,42 +115,103 @@ export default function ValidationPage() {
     setStatusFilter("ALL");
   };
 
-  const bandStatus = dsValidation
-    ? dsValidation.valid
-      ? "PASS"
-      : "FAIL"
-    : "NOT_VALIDATED";
+  const structuredChecks = asRecord(qa.checks);
+  const structuredCategories = asRecord(qa.categories);
+  const qaRecord = asRecord(qa);
 
-  const geoStatus = dsValidation
-    ? dsValidation.valid
-      ? "PASS"
-      : "WARN"
-    : "NOT_VALIDATED";
+  const requiredChecks = Array.isArray(qaRecord.required_checks)
+    ? qaRecord.required_checks.filter(
+        (item): item is string => typeof item === "string"
+      )
+    : [];
 
-  const qaChecks = [
-    { label: "Input Band Completeness", status: bandStatus },
-    {
-      label: "Spatial Grid Alignment",
-      status: qa.qa_flags?.alignment ?? (results ? "NOT_REPORTED" : "PENDING"),
-    },
-    {
-      label: "Temporal Phenology Interval",
-      status: qa.qa_flags?.temporal ?? (results ? "NOT_REPORTED" : "PENDING"),
-    },
-    {
-      label: "5-Channel Model Execution",
-      status: qa.qa_flags?.inference ?? (results ? "NOT_REPORTED" : "PENDING"),
-    },
-    { label: "Raster Integrity & Georeferencing", status: geoStatus },
-    {
-      label: "Olofsson Sample Validation",
-      status: qa.olofsson_status ?? "NOT_AVAILABLE",
-    },
-    {
-      label: "Independent Hydrological Evidence",
-      status: qa.hydro_status ?? "NOT_AVAILABLE",
-    },
-  ];
+  const checkKeys = Array.from(
+    new Set([
+      ...requiredChecks,
+      ...Object.keys(structuredChecks),
+    ])
+  );
+
+  const hasStructuredChecks = checkKeys.length > 0;
+
+  const fallbackStatus = results ? "NOT_REPORTED" : "PENDING";
+
+  const qaChecks = hasStructuredChecks
+    ? checkKeys.map((key) => ({
+        label: CHECK_LABELS[key] ?? formatLabel(key),
+        status: readStatus(structuredChecks[key]),
+      }))
+    : [
+        {
+          label: "Input Band Completeness",
+          status: fallbackStatus,
+        },
+        {
+          label: "Spatial Grid Alignment",
+          status: normalizeStatus(
+            qa.qa_flags?.alignment,
+            fallbackStatus
+          ),
+        },
+        {
+          label: "Temporal Phenology Interval",
+          status: normalizeStatus(
+            qa.qa_flags?.temporal,
+            fallbackStatus
+          ),
+        },
+        {
+          label: "5-Channel Model Execution",
+          status: normalizeStatus(
+            qa.qa_flags?.inference,
+            fallbackStatus
+          ),
+        },
+        {
+          label: "Raster Integrity & Georeferencing",
+          status: fallbackStatus,
+        },
+        {
+          label: "Olofsson Sample Validation",
+          status: normalizeStatus(
+            qa.olofsson_status,
+            fallbackStatus
+          ),
+        },
+        {
+          label: "Independent Hydrological Evidence",
+          status: normalizeStatus(
+            qa.hydro_status,
+            fallbackStatus
+          ),
+        },
+      ];
+
+  const categoryChecks = Object.entries(
+    structuredCategories
+  ).map(([key, value]) => ({
+    key,
+    label: formatLabel(key),
+    status: readStatus(value),
+  }));
+
+  const countStatuses = (statuses: string[]) => {
+    const counts: Record<string, number> = {};
+
+    for (const status of statuses) {
+      counts[status] = (counts[status] ?? 0) + 1;
+    }
+
+    return Object.entries(counts);
+  };
+
+  const checkSummary = countStatuses(
+    qaChecks.map((item) => item.status)
+  );
+
+  const findingSummary = countStatuses(
+    findings.map((item) => normalizeStatus(item.status))
+  );
 
   const getStatusClass = (status: string) => {
     const normalized = status.toUpperCase();
@@ -185,6 +299,35 @@ export default function ValidationPage() {
           Systematic Validation Checks
         </div>
 
+        <p className="mt-1 text-xs text-[var(--text-secondary)]">
+          {hasStructuredChecks
+            ? `${qaChecks.length} engine-reported checks`
+            : "Structured engine checks are not available. Showing legacy fields."}
+        </p>
+
+        {dsValidation && (
+          <p className="mt-2 text-xs text-[var(--text-secondary)]">
+            Dataset readiness: {dsValidation.valid ? "READY" : "NOT READY"}.
+            Dataset readiness does not establish scientific QA success.
+          </p>
+        )}
+
+        {hasStructuredChecks && (
+          <div
+            aria-label="Validation check summary"
+            className="mt-3 flex flex-wrap gap-2"
+          >
+            {checkSummary.map(([status, count]) => (
+              <span
+                key={status}
+                className={`rounded px-2.5 py-1 text-xs font-semibold ${getStatusClass(status)}`}
+              >
+                {count} {status}
+              </span>
+            ))}
+          </div>
+        )}
+
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
           {qaChecks.map((item) => (
             <div
@@ -205,6 +348,35 @@ export default function ValidationPage() {
         </div>
       </section>
 
+      {categoryChecks.length > 0 && (
+        <section className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-5">
+          <div className="text-sm font-medium text-[var(--text)]">
+            Validation Categories
+          </div>
+
+          <p className="mt-1 text-xs text-[var(--text-secondary)]">
+            {categoryChecks.length} engine-reported categories
+          </p>
+
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {categoryChecks.map((item) => (
+              <div
+                key={item.key}
+                className="flex items-center justify-between gap-3 rounded-md border border-[var(--border)] p-3"
+              >
+                <span className="text-xs font-medium text-[var(--text)]">
+                  {item.label}
+                </span>
+
+                <span className={`rounded px-2 py-1 text-[10px] font-semibold ${getStatusClass(item.status)}`}>
+                  {item.status}
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Actionable QA Findings */}
       <section className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -223,6 +395,22 @@ export default function ValidationPage() {
           </span>
         </div>
 
+        {findingSummary.length > 0 && (
+          <div
+            aria-label="QA finding summary"
+            className="mt-3 flex flex-wrap gap-2"
+          >
+            {findingSummary.map(([status, count]) => (
+              <span
+                key={status}
+                className={`rounded px-2.5 py-1 text-xs font-semibold ${getStatusClass(status)}`}
+              >
+                {count} {status}
+              </span>
+            ))}
+          </div>
+        )}
+
         {/* Search and Filters */}
         <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-4">
           <div className="md:col-span-2">
@@ -238,7 +426,7 @@ export default function ValidationPage() {
               type="search"
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Search code, message, phase or action..."
+              placeholder="Search code, category, check, message or action..."
               className="w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text)] outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             />
           </div>
@@ -287,7 +475,22 @@ export default function ValidationPage() {
               <option value="WARN">Warn</option>
               <option value="WARNING">Warning</option>
               <option value="PASS">Pass</option>
+              <option value="NOT_AVAILABLE">Not Available</option>
+              <option value="NOT_RUN">Not Run</option>
+              <option value="NOT_APPLICABLE">Not Applicable</option>
               <option value="NOT_REPORTED">Not Reported</option>
+              {Array.from(
+                new Set(findings.map((item) => normalizeStatus(item.status)))
+              )
+                .filter((status) => ![
+                  "ALL", "FAIL", "ERROR", "WARN", "WARNING", "PASS",
+                  "NOT_AVAILABLE", "NOT_RUN", "NOT_APPLICABLE", "NOT_REPORTED",
+                ].includes(status))
+                .map((status) => (
+                  <option key={status} value={status}>
+                    {formatLabel(status.toLowerCase())}
+                  </option>
+                ))}
             </select>
           </div>
         </div>
@@ -314,13 +517,15 @@ export default function ValidationPage() {
         <div className="mt-4 space-y-3">
           {filteredFindings.length > 0 ? (
             filteredFindings.map((finding, index) => {
-              const severity = (
-                finding.severity || "UNSPECIFIED"
-              ).toUpperCase();
+              const severity = normalizeStatus(
+                finding.severity,
+                "UNSPECIFIED"
+              );
 
-              const status = (
-                finding.status || "NOT_REPORTED"
-              ).toUpperCase();
+              const status = normalizeStatus(finding.status);
+
+              const category = asRecord(finding).category;
+              const check = asRecord(finding).check;
 
               return (
                 <article
@@ -350,6 +555,18 @@ export default function ValidationPage() {
                   {finding.phase && (
                     <div className="mt-2 text-xs text-[var(--text-secondary)]">
                       Phase: {finding.phase}
+                    </div>
+                  )}
+
+                  {typeof category === "string" && (
+                    <div className="mt-1 text-xs text-[var(--text-secondary)]">
+                      Category: {formatLabel(category)}
+                    </div>
+                  )}
+
+                  {typeof check === "string" && (
+                    <div className="mt-1 text-xs text-[var(--text-secondary)]">
+                      Check: {CHECK_LABELS[check] ?? formatLabel(check)}
                     </div>
                   )}
 
